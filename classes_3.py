@@ -112,11 +112,11 @@ class AddressBook(UserDict):
     def search(self, search_word):
         res = []
         for key, value in zip(self.data.keys(), self.data.values()):
-            if search_word in str(key):
+            if search_word.lower() in str(key).lower():
                 res.append(key)
             else:
                 for phone in value.phones:
-                    if search_word in str(phone.get_value()):
+                    if search_word.lower() in str(phone.get_value()).lower():
                         if key not in res:
                             res.append(key)
         return res
@@ -126,3 +126,109 @@ class AddressBook(UserDict):
 
     def load(self, filepath="address_book.pkl"):
         self.data = pickle.load(open(filepath, "rb"))
+
+
+def input_error(func):
+    def decorator_with_arguments(command=""):
+        try:
+            res = func(command)
+            if res is None:
+                return "Phone not found"
+        except KeyError:
+            return "KeyError"
+        except ValueError:
+            return "Phone not number"
+        except IndexError:
+            return "Give me name and phone please"
+        return res
+    return decorator_with_arguments
+
+
+telephone_book = AddressBook()
+
+
+def hello():
+    return "How can I help you?"
+
+
+@input_error
+def add(command):
+    name = command.split(" ")[1]
+    phone_number = command.split(" ")[2]
+    if len(command.split(" ")) == 4:
+        day_to_birthday = command.split(" ")[3]
+        telephone_book.add_record(Record(Name(name), [Phone(phone_number)], Birthday(day_to_birthday)))
+    else:
+        telephone_book.add_record(Record(Name(name), [Phone(phone_number)]))
+    return "Phone was successfully added"
+
+
+@input_error
+def change(command):
+    for key in telephone_book.keys():
+        if key == command.split(" ")[1]:
+            telephone_book[key].update_phone(telephone_book[key].phones[0].value, command.split(" ")[2])
+    return "Phone was successfully changed"
+
+
+@input_error
+def phone(command):
+    for user in telephone_book.keys():
+        if user == command.split(" ")[1]:
+            return ", ".join([ph.value for ph in telephone_book[user].phones])
+
+
+@input_error
+def days_to_birthday(command):
+    for user in telephone_book:
+        if user == command.split(" ")[3]:
+            return telephone_book[user].days_to_birthday()
+
+
+@input_error
+def search(command):
+    if telephone_book.search(command.split(" ")[1]):
+        return ", ".join(telephone_book.search(command.split(" ")[1]))
+    else:
+        return "Not found"
+
+
+def show_all():
+    result = []
+    for i, users in enumerate(telephone_book.iterator(10)):
+        result.append(f"page {i + 1}:")
+        for user in users:
+            for key in user:
+                result.append(f"{key}: {', '.join([str(ph.value) for ph in telephone_book[key].phones])}")
+    return "\n".join(result)
+
+
+def main():
+    try:
+        telephone_book.load()
+    except:
+        pass
+    while True:
+        command = input().lower()
+        if command == "hello":
+            print(hello())
+        elif command.split(" ")[0] == "add":
+            print(add(command))
+        elif command.split(" ")[0] == "change":
+            print(change(command))
+        elif command.split(" ")[0] == "phone":
+            print(phone(command))
+        elif command.split(" ")[0] == "search":
+            print(search(command))
+        elif command == "show all":
+            print(show_all())
+        elif "days to birthday" in command:
+            print(days_to_birthday(command))
+        elif command == "exit" or command == "close" or command == "good bye" or command == ".":
+            telephone_book.save()
+            print("Good bye!")
+            return
+
+
+if __name__ == '__main__':
+    main()
